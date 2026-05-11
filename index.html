@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard — Consultoria LB</title>
+<style>
+  :root{--gold:#c9a84c;--gold-light:#e2c47a;--bg:#0a0a0a;--card:#141414;--card2:#1a1a1a;--white:#ffffff;--white-dim:rgba(255,255,255,0.6);--green:#4caf50;--red:#f44336;--blue:#2196f3;--purple:#9c27b0}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);color:var(--white);font-family:'Segoe UI',sans-serif;min-height:100vh}
+  #loading{display:flex;position:fixed;inset:0;background:rgba(10,10,10,0.95);z-index:9999;flex-direction:column;align-items:center;justify-content:center;gap:16px}
+  .spinner{width:48px;height:48px;border:4px solid rgba(201,168,76,0.2);border-top-color:var(--gold);border-radius:50%;animation:spin 0.8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  #loading-msg{color:var(--gold);font-size:14px;letter-spacing:2px;text-transform:uppercase}
+  #login-screen{display:none;position:fixed;inset:0;background:var(--bg);z-index:1000;flex-direction:column;align-items:center;justify-content:center;gap:24px}
+  .login-logo{font-size:48px;margin-bottom:8px}
+  .login-brand{font-family:Georgia,serif;font-size:32px;color:var(--gold);letter-spacing:4px}
+  .login-sub{font-size:11px;color:var(--white-dim);letter-spacing:6px;text-transform:uppercase;margin-top:4px}
+  #btn-login{display:flex;align-items:center;gap:12px;background:#fff;color:#333;border:none;padding:14px 28px;border-radius:8px;font-size:16px;font-weight:500;cursor:pointer;transition:all 0.2s;margin-top:16px}
+  #btn-login:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,0.3)}
+  #btn-login img{width:20px;height:20px}
+  #login-error{color:var(--red);font-size:13px;max-width:320px;text-align:center;display:none}
+  #login-status{color:var(--white-dim);font-size:12px;letter-spacing:1px}
+  .login-restrict{color:var(--white-dim);font-size:12px;letter-spacing:1px;margin-top:8px}
+  nav{background:var(--card);border-bottom:1px solid rgba(201,168,76,0.2);padding:16px 24px;display:flex;align-items:center;justify-content:space-between}
+  .nav-brand{font-family:Georgia,serif;font-size:20px;color:var(--gold);letter-spacing:3px}
+  .nav-right{display:flex;align-items:center;gap:16px}
+  #nav-email{color:var(--white-dim);font-size:13px}
+  #btn-logout{background:transparent;border:1px solid rgba(201,168,76,0.4);color:var(--gold);padding:8px 16px;border-radius:6px;font-size:13px;cursor:pointer;transition:all 0.2s}
+  #btn-logout:hover{background:rgba(201,168,76,0.1)}
+  #dashboard{display:none}
+  main{padding:32px 24px;max-width:1200px;margin:0 auto}
+  .section-title{font-size:12px;letter-spacing:4px;text-transform:uppercase;color:var(--white-dim);margin-bottom:20px}
+  #stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px;margin-bottom:40px}
+  .stat-card{background:var(--card);border:1px solid rgba(201,168,76,0.15);border-radius:12px;padding:24px;text-align:center}
+  .stat-num{font-size:36px;font-weight:700;color:var(--gold);margin-bottom:4px}
+  .stat-label{font-size:12px;color:var(--white-dim);letter-spacing:1px}
+  #clients-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px}
+  .client-card{background:var(--card);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:20px;text-decoration:none;color:inherit;transition:all 0.25s;display:block}
+  .client-card:hover{border-color:rgba(201,168,76,0.4);transform:translateY(-3px);box-shadow:0 8px 24px rgba(0,0,0,0.4)}
+  .client-name{font-size:16px;font-weight:600;color:var(--white);margin-bottom:10px}
+  .client-meta{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+  .badge{font-size:11px;padding:3px 10px;border-radius:20px;font-weight:500;letter-spacing:0.5px}
+  .badge-active{background:rgba(76,175,80,0.15);color:#81c784;border:1px solid rgba(76,175,80,0.3)}
+  .badge-inactive{background:rgba(244,67,54,0.1);color:#e57373;border:1px solid rgba(244,67,54,0.2)}
+  .badge-peso{background:rgba(33,150,243,0.12);color:#64b5f6;border:1px solid rgba(33,150,243,0.25)}
+  .badge-foto{background:rgba(156,39,176,0.12);color:#ce93d8;border:1px solid rgba(156,39,176,0.25)}
+  .client-portal{font-size:11px;color:var(--gold);opacity:0.7;margin-top:6px}
+</style>
+</head>
+<body>
+<div id="loading"><div class="spinner"></div><div id="loading-msg">Autenticando...</div></div>
+<div id="login-screen">
+  <div class="login-logo">⚡</div>
+  <div class="login-brand">Consultoria LB</div>
+  <div class="login-sub">Dashboard do Treinador</div>
+  <button id="btn-login">
+    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google">
+    Entrar com Google
+  </button>
+  <div id="login-error"></div>
+  <div id="login-status"></div>
+  <div class="login-restrict">Acesso restrito ao treinador Luan Barreto</div>
+</div>
+<div id="dashboard">
+  <nav>
+    <div class="nav-brand">⚡Consultoria LB</div>
+    <div class="nav-right">
+      <span id="nav-email"></span>
+      <button id="btn-logout">Sair</button>
+    </div>
+  </nav>
+  <main>
+    <div class="section-title">Clientes</div>
+    <div id="stats-grid"></div>
+    <div id="clients-grid"><p style="color:var(--white-dim)">Carregando clientes...</p></div>
+  </main>
+</div>
+<script>
+const FB_API_KEY="AIzaSyBeik1WqF-1vdAiKR5Fzxs9M87p9gi3HCI";
+const FB_PROJECT="consultoria-lb";
+const ALLOWED_EMAIL="luanbarretopersonal@gmail.com";
+const GOOGLE_CLIENT_ID="934724034464-k623jn6p5ir9b07jebphlo5d21q74k2r.apps.googleusercontent.com";
+const REDIRECT_URI="https://dashboardlb-treinador.netlify.app/";
+const PORTAL_MAP={"caio-emanuel":"https://portalcaioemanuel.netlify.app","cinthya-coelho":"https://portalcinthya.netlify.app","joao-claudio":"https://portaljoaoclaudio.netlify.app","beatriz-araujo":"https://portalbeaaraujo.netlify.app","rennan-vitor":"https://portalrenanribeiro.netlify.app","gabriel-patricio":"https://portalgabrielpatricio.netlify.app","nader-hijazi":"https://portalnader.netlify.app","carinne-portela":"https://portalcarinne.netlify.app","mateus-cardoso":"https://portalmateuscardoso.netlify.app","erico-venturim":"https://portalerico.netlify.app","cleber-junior":"https://portalcleberjr.netlify.app","carlos-augusto":"https://portalcarlosaugusto.netlify.app","filipe-coelho":"https://portalfilipecoelho.netlify.app","larissa-agnez":"https://portallariagnez.netlify.app","danielle-liberato":"https://portaldaniliberatto.netlify.app","eduardo-lopes":"https://portaleduardolopes.netlify.app","licia-tovar":"https://portallicia.netlify.app","pedro-bernardes":"https://portalpedrobernardes.netlify.app","leonan-luppi":"https://portalleonan.netlify.app","miguel-rezende":"https://portalmiguelrezende.netlify.app","anna-capua":"https://portalannacapua.netlify.app","jhone":"https://portaljhonejr.netlify.app"};
+function showLoading(m){document.getElementById('loading').style.display='flex';document.getElementById('loading-msg').textContent=m||'Carregando...';}
+function hideLoading(){document.getElementById('loading').style.display='none';}
+function showError(m){const e=document.getElementById('login-error');e.textContent=m;e.style.display='block';}
+function setStatus(m){document.getElementById('login-status').textContent=m;}
+function showLoginScreen(){document.getElementById('login-screen').style.display='flex';document.getElementById('dashboard').style.display='none';hideLoading();}
+function saveSession(t,e,x){localStorage.setItem('lb_id_token',t);localStorage.setItem('lb_email',e);localStorage.setItem('lb_expiry',x);}
+function loadSession(){const t=localStorage.getItem('lb_id_token'),e=localStorage.getItem('lb_email'),x=parseInt(localStorage.getItem('lb_expiry')||'0');if(t&&e&&Date.now()<x)return{idToken:t,email:e};return null;}
+function clearSession(){localStorage.removeItem('lb_id_token');localStorage.removeItem('lb_email');localStorage.removeItem('lb_expiry');}
+function startGoogleLogin(){const s=Math.random().toString(36).substring(2,15);sessionStorage.setItem('oauth_state',s);const p=new URLSearchParams({client_id:GOOGLE_CLIENT_ID,redirect_uri:REDIRECT_URI,response_type:'token',scope:'email profile openid',state:s,include_granted_scopes:'true',prompt:'select_account'});window.location.href='https://accounts.google.com/o/oauth2/v2/auth?'+p.toString();}
+async function googleTokenToFirebase(at){const r=await fetch('https://identitytoolkit.googleapis.com/v1/accounts:signInWithIdp?key='+FB_API_KEY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({postBody:'access_token='+encodeURIComponent(at)+'&providerId=google.com',requestUri:REDIRECT_URI,returnIdpCredential:true,returnSecureToken:true})});const d=await r.json();if(d.error)throw new Error(d.error.message||'Firebase auth failed');return d;}
+async function loadClients(t){
+  // Load from 'clients' collection (new portals with Firebase)
+  const r=await fetch('https://firestore.googleapis.com/v1/projects/'+FB_PROJECT+'/databases/(default)/documents/clients?pageSize=100',{headers:{'Authorization':'Bearer '+t}});
+  const d=await r.json();
+  if(d.error)throw new Error(d.error.message);
+  const docs=d.documents||[];
+  // Also try legacy 'clientes' collection
+  try{
+    const r2=await fetch('https://firestore.googleapis.com/v1/projects/'+FB_PROJECT+'/databases/(default)/documents/clientes?pageSize=50',{headers:{'Authorization':'Bearer '+t}});
+    const d2=await r2.json();
+    if(d2.documents)docs.push(...d2.documents);
+  }catch(e){}
+  return docs;
+}
+function fieldVal(f,k){if(!f||!f[k])return null;const v=f[k];return v.stringValue??v.integerValue??v.booleanValue??v.timestampValue??null;}
+function processClients(docs){
+  const now=Date.now(),d7=7*24*3600*1000;
+  // Deduplicate by id
+  const seen=new Set();
+  return docs.filter(doc=>{
+    const id=doc.name.split('/').pop();
+    if(seen.has(id))return false;
+    seen.add(id);
+    return true;
+  }).map(doc=>{
+    const id=doc.name.split('/').pop(),f=doc.fields||{};
+    let isActive=false;
+    const la=fieldVal(f,'lastActivity')||fieldVal(f,'lastUpdate')||fieldVal(f,'updatedAt')||fieldVal(f,'registeredAt');
+    if(la){try{isActive=(now-new Date(la).getTime())<d7;}catch(e){}}
+    const hasPeso=!!(fieldVal(f,'peso')||fieldVal(f,'pesoAtual')||fieldVal(f,'ultimoPeso'));
+    const hasFoto=!!(fieldVal(f,'foto')||fieldVal(f,'fotoUrl')||fieldVal(f,'photoUrl')||fieldVal(f,'fotoPerfil'));
+    const nome=fieldVal(f,'nome')||fieldVal(f,'name')||id.split('-').map(w=>w.charAt(0).toUpperCase()+w.slice(1)).join(' ');
+    const portal=PORTAL_MAP[id]||null;
+    return{id,nome,isActive,hasPeso,hasFoto,portal};
+  });
+}
+function renderDashboard(email,clients){document.getElementById('login-screen').style.display='none';document.getElementById('dashboard').style.display='block';document.getElementById('nav-email').textContent=email;const tot=clients.length,act=clients.filter(c=>c.isActive).length,cp=clients.filter(c=>c.hasPeso).length,cf=clients.filter(c=>c.hasFoto).length;document.getElementById('stats-grid').innerHTML='<div class="stat-card"><div class="stat-num">'+tot+'</div><div class="stat-label">Total de Clientes</div></div><div class="stat-card"><div class="stat-num">'+act+'</div><div class="stat-label">Ativos (7 dias)</div></div><div class="stat-card"><div class="stat-num">'+cp+'</div><div class="stat-label">Com Peso</div></div><div class="stat-card"><div class="stat-num">'+cf+'</div><div class="stat-label">Com Fotos</div></div>';if(!clients.length){document.getElementById('clients-grid').innerHTML='<p style="color:var(--white-dim)">Nenhum cliente encontrado.</p>';return;}document.getElementById('clients-grid').innerHTML=clients.map(c=>{const b=[];if(c.isActive)b.push('<span class="badge badge-active">Ativo</span>');else b.push('<span class="badge badge-inactive">Inativo</span>');if(c.hasPeso)b.push('<span class="badge badge-peso">Peso</span>');if(c.hasFoto)b.push('<span class="badge badge-foto">Foto</span>');return'<a class="client-card" href="'+(c.portal||'#')+'" target="_blank" rel="noopener"><div class="client-name">'+c.nome+'</div><div class="client-meta">'+b.join('')+'</div>'+(c.portal?'<div class="client-portal">'+c.portal.replace('https://','')+' ↗</div>':'')+'</a>';}).join('');}
+async function init(){const hash=window.location.hash;if(hash&&hash.includes('access_token')){showLoading('Autenticando com Google...');history.replaceState(null,'','/');const p=new URLSearchParams(hash.substring(1)),at=p.get('access_token');if(!at){showLoginScreen();showError('Erro: token nao recebido do Google.');return;}try{setStatus('Verificando conta...');const fb=await googleTokenToFirebase(at);if(fb.email!==ALLOWED_EMAIL){clearSession();showLoginScreen();showError('Acesso negado. Esta conta ('+fb.email+') nao tem permissao.');return;}const exp=Date.now()+(parseInt(fb.expiresIn||3600)*1000);saveSession(fb.idToken,fb.email,exp);setStatus('Carregando clientes...');const docs=await loadClients(fb.idToken);const clients=processClients(docs);hideLoading();renderDashboard(fb.email,clients);}catch(err){console.error('Auth error:',err);showLoginScreen();showError('Erro ao autenticar: '+err.message);}return;}if(hash&&hash.includes('error')){history.replaceState(null,'','/');const p=new URLSearchParams(hash.substring(1));showLoginScreen();showError('Erro do Google: '+(p.get('error_description')||p.get('error')||'desconhecido'));return;}const sess=loadSession();if(sess){showLoading('Carregando dashboard...');try{const docs=await loadClients(sess.idToken);const clients=processClients(docs);hideLoading();renderDashboard(sess.email,clients);}catch(e){clearSession();showLoginScreen();}return;}showLoginScreen();}
+document.getElementById('btn-login').addEventListener('click',startGoogleLogin);
+document.getElementById('btn-logout').addEventListener('click',()=>{clearSession();showLoginScreen();});
+init();
+</script>
+</body>
+</html>
