@@ -70,6 +70,13 @@ main{padding:32px 24px;max-width:1400px;margin:0 auto}
 .renewal-ok{background:rgba(76,175,80,0.12);color:#81c784;border:1px solid rgba(76,175,80,0.25)}
 .renewal-warn{background:rgba(255,152,0,0.12);color:#ffb74d;border:1px solid rgba(255,152,0,0.25)}
 .renewal-due{background:rgba(244,67,54,0.12);color:#ef9a9a;border:1px solid rgba(244,67,54,0.25)}
+/* FEEDBACK */
+.feedback-badge{padding:2px 10px;border-radius:10px;font-size:10px;font-weight:700}
+.feedback-ok{background:rgba(76,175,80,0.12);color:#81c784;border:1px solid rgba(76,175,80,0.25)}
+.feedback-warn{background:rgba(255,152,0,0.12);color:#ffb74d;border:1px solid rgba(255,152,0,0.25)}
+.feedback-late{background:rgba(244,67,54,0.12);color:#ef9a9a;border:1px solid rgba(244,67,54,0.25)}
+#feedback-bar{background:rgba(156,39,176,0.08);border:1px solid rgba(156,39,176,0.25);border-radius:8px;padding:14px 20px;margin-bottom:20px;display:none}
+.feedback-bar-title{font-size:13px;font-weight:600;color:#ce93d8;margin-bottom:8px;letter-spacing:.5px}
 /* BOTÕES */
 .client-actions{display:flex;gap:6px;flex-wrap:wrap}
 .btn-sm{border:none;border-radius:6px;padding:5px 10px;font-size:10px;font-weight:600;cursor:pointer;transition:all 0.2s;letter-spacing:.3px}
@@ -121,6 +128,7 @@ main{padding:32px 24px;max-width:1400px;margin:0 auto}
     <div id="stats-grid"></div>
     <div id="alert-bar"><div class="alert-title">🔴 Planos vencidos — atualização necessária</div><div class="alert-chips" id="alert-chips"></div></div>
     <div id="renewal-bar"><div class="renewal-title">🟡 Renovações próximas</div><div class="alert-chips" id="renewal-chips"></div></div>
+    <div id="feedback-bar"><div class="feedback-bar-title">💬 Sem feedback há 28+ dias</div><div class="alert-chips" id="feedback-chips"></div></div>
     <div class="section-title" style="margin-top:8px">Clientes</div>
     <div id="clients-grid"><p style="color:var(--white-dim)">Carregando clientes...</p></div>
   </main>
@@ -316,6 +324,22 @@ function renewalBadge(dateStr, value){
   return `<span class="renewal-badge renewal-ok">🟢 ${d} · ${days}d${val}</span>`;
 }
 
+function daysSince(dateStr){
+  if(!dateStr)return null;
+  const d=new Date(dateStr);
+  const diff=Date.now()-d.getTime();
+  return Math.floor(diff/(24*3600*1000));
+}
+
+function feedbackBadge(dateStr){
+  if(!dateStr)return '<span class="feedback-badge feedback-late">💬 Sem feedback</span>';
+  const days=daysSince(dateStr);
+  const d=new Date(dateStr).toLocaleDateString('pt-BR');
+  if(days<14)return `<span class="feedback-badge feedback-ok">💬 ${days}d atrás · ok</span>`;
+  if(days<28)return `<span class="feedback-badge feedback-warn">💬 ${days}d atrás · cobrar</span>`;
+  return `<span class="feedback-badge feedback-late">💬 ${days}d atrás · atrasado</span>`;
+}
+
 // ── Load clients ──
 async function loadClients(t){
   const r=await fetch(`https://firestore.googleapis.com/v1/projects/${FB_PROJECT}/databases/(default)/documents/clients?pageSize=100`,{headers:{'Authorization':'Bearer '+t}});
@@ -350,7 +374,8 @@ function processClients(docs){
     const planUpdateDate=getFieldVal(f,'planUpdateDate')||null;
     const renewalDate=getFieldVal(f,'renewalDate')||null;
     const renewalValue=getFieldVal(f,'renewalValue')||null;
-    return{id,nome,isActive,hasPeso,hasFoto,portal,planUpdateDate,renewalDate,renewalValue};
+    const lastFeedbackDate=getFieldVal(f,'lastFeedbackDate')||null;
+    return{id,nome,isActive,hasPeso,hasFoto,portal,planUpdateDate,renewalDate,renewalValue,lastFeedbackDate};
   });
 }
 
@@ -366,6 +391,7 @@ function renderDashboard(email, clients){
   const warnClients=clients.filter(c=>{const w=weeksSince(c.planUpdateDate);return w>=4&&w<6;});
   const renewalSoon=clients.filter(c=>{const d=daysUntil(c.renewalDate);return d!==null&&d<=15&&d>=0;});
   const renewalOverdue=clients.filter(c=>{const d=daysUntil(c.renewalDate);return d!==null&&d<0;});
+  const feedbackLate=clients.filter(c=>{const d=daysSince(c.lastFeedbackDate);return d===null||d>=28;});
 
   document.getElementById('stats-grid').innerHTML=`
     <div class="stat-card"><div class="stat-num">${tot}</div><div class="stat-label">Total Clientes</div></div>
@@ -373,6 +399,7 @@ function renderDashboard(email, clients){
     <div class="stat-card" style="border-color:rgba(244,67,54,0.3)"><div class="stat-num" style="color:#f44336">${overdueClients.length}</div><div class="stat-label">Planos Vencidos</div></div>
     <div class="stat-card" style="border-color:rgba(255,152,0,0.3)"><div class="stat-num" style="color:#ff9800">${warnClients.length}</div><div class="stat-label">Cobrar Feedback</div></div>
     <div class="stat-card" style="border-color:rgba(255,152,0,0.3)"><div class="stat-num" style="color:#ff9800">${renewalSoon.length+renewalOverdue.length}</div><div class="stat-label">Renovações</div></div>
+    <div class="stat-card" style="border-color:rgba(156,39,176,0.3)"><div class="stat-num" style="color:#ce93d8">${feedbackLate.length}</div><div class="stat-label">Sem Feedback</div></div>
   `;
 
   // Alert bars
@@ -389,6 +416,14 @@ function renderDashboard(email, clients){
     bar.style.display='block';
     bar.querySelector('.alert-chips').innerHTML=[...renewalOverdue,...renewalSoon].map(c=>
       `<span class="alert-chip" style="color:#ffb74d;border-color:rgba(255,152,0,0.3)" onclick="scrollToClient('${c.id}')">${c.nome} · ${daysUntil(c.renewalDate)<0?'VENCIDO':daysUntil(c.renewalDate)+'d'}</span>`
+    ).join('');
+  }
+
+  if(feedbackLate.length){
+    const bar=document.getElementById('feedback-bar');
+    bar.style.display='block';
+    bar.querySelector('.alert-chips').innerHTML=feedbackLate.map(c=>
+      `<span class="alert-chip" style="color:#ce93d8;border-color:rgba(156,39,176,0.3)" onclick="scrollToClient('${c.id}')">${c.nome} · ${daysSince(c.lastFeedbackDate)===null?'nunca':daysSince(c.lastFeedbackDate)+'d'}</span>`
     ).join('');
   }
 
@@ -429,6 +464,10 @@ function renderDashboard(email, clients){
         <div class="plan-row" style="margin-bottom:0">
           <span class="plan-label">Renovação</span>
           ${renewalBadge(c.renewalDate, c.renewalValue)}
+        </div>
+        <div class="plan-row" style="margin-top:6px;margin-bottom:0">
+          <span class="plan-label">Feedback</span>
+          ${feedbackBadge(c.lastFeedbackDate)}
         </div>
       </div>
       <div class="client-actions">
